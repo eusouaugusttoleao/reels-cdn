@@ -1,0 +1,37 @@
+name: Publish · Algema de Ouro · 2026-05-31 15:31 BRT
+
+on:
+  # Cron em UTC. 15:31 BRT (UTC-3) = 18:31 UTC.
+  # GitHub Actions cron pode atrasar até 15min — agendo 18:25 e o job tem sleep_until.
+  schedule:
+    - cron: '25 18 31 5 *'
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'Slug do corte'
+        required: true
+        default: '03-corte-algema-de-ouro'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait until 18:31 UTC (15:31 BRT)
+        if: github.event_name == 'schedule'
+        run: |
+          TARGET=$(date -u -d '2026-05-31 18:31:00' +%s)
+          while [ $(date -u +%s) -lt "$TARGET" ]; do
+            REMAINING=$((TARGET - $(date -u +%s)))
+            echo "Aguardando $REMAINING s até 18:31 UTC"
+            sleep $(( REMAINING < 60 ? 5 : 30 ))
+          done
+
+      - name: Publish Reel
+        env:
+          META_LONG_TOKEN: ${{ secrets.META_LONG_TOKEN }}
+          UAZAPI_TOKEN: ${{ secrets.UAZAPI_TOKEN }}
+        run: |
+          SLUG="${{ github.event.inputs.slug || '03-corte-algema-de-ouro' }}"
+          python3 actions/publish.py "$SLUG"
